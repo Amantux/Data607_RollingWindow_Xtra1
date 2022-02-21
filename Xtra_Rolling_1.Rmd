@@ -1,0 +1,86 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
+
+```{r}
+library(dplyr)
+library(zoo)
+```
+
+First Things first let's work on a singular goal of getting a six-day rolling average. 
+
+
+```{r}
+file <- "coin_Dogecoin.csv"
+df <- read_delim(file, delim=",", col_names=TRUE, show_col_types = FALSE)
+df$Six_Day_RollingAvg <- rollmean(df$Close, 6, fill = 0, na.pad = FALSE, 
+  align = c("right"),)
+head(df,10)
+```
+
+After we have a six day rolling average, let's address the ytd mean. 
+
+```{r}
+file <- "coin_Dogecoin.csv"
+df <- read_delim(file, delim=",", col_names=TRUE, show_col_types = FALSE)
+print(df$Close[1:10])
+for (row_number in 1:length(df)){
+   df$RollingAvg[row_number] = mean(df$Close[1:row_number])
+  }
+head(df)
+```
+
+From there, let's have some fun and get a list of all the available coins. 
+
+```{r}
+file_list <- list.files(path="coin_list")
+coin_list <- ""
+print(file_list)
+for (i in 1:length(file_list)){
+  print(str_extract_all(file_list[i], "(?<=coin_)(.*)(?=.csv)"))
+  coin_list <- c(coin_list, str_extract_all(file_list[i], "(?<=coin_)(.*)(?=.csv)"))
+}
+df <- data.frame(test_column = unlist(coin_list))
+```
+
+From this list, feel free to pick any two coins
+
+```{r}
+Coin1 <- "Bitcoin" 
+Coin2 <- "EOS"
+```
+
+Now we're going to take the code for a 6 day moving functions and year to date averages and make it into a function. 
+```{r}
+Six_Day_RollingAvg <- function(file_name){
+  six_day_ravg <- read_delim(file_name, delim=",", col_names=TRUE, show_col_types = FALSE)
+  six_day_ravg$Six_Day_RollingAvg <- rollmean(six_day_ravg$Close, 6, fill = 0, na.pad = FALSE, 
+  align = c("right"),)
+  return(six_day_ravg[c("Name","Date","Six_Day_RollingAvg")])
+}
+ytd_avg <- function(file_name){
+ytd_avg_df <- read_delim(file_name, delim=",", col_names=TRUE, show_col_types = FALSE)
+for (row_number in 1:length(ytd_avg_df)){
+    ytd_avg_df$RollingAvg[row_number] = mean(ytd_avg_df$Close[1:row_number])
+}
+return(ytd_avg_df[c("Name","Date","RollingAvg")])
+}
+```
+
+Now let's test these created functions:
+
+```{r}
+df_coin_1 <- merge(Six_Day_RollingAvg("coin_Bitcoin.csv"), ytd_avg("coin_Bitcoin.csv"), by=c("Name","Date"))
+head(df_coin_1)
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
