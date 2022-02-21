@@ -1,8 +1,8 @@
 ---
-title: Extra Rolling Window Assignment
+title: Rolling Window Assignment
 author: Alex Moyse
-output:
-    html_document:
+output: 
+  html_document:
     toc: true
     toc_float: true
 ---
@@ -21,6 +21,8 @@ library(tidyverse)
 
 <H2> Starting the Problem- A six-day rolling average on a fixed file </H2>
 First Things first let's work on a singular goal of getting a six-day rolling average. 
+
+For this we will use a function named rollmean, which handles null values as well as allows for the choice in how the window is calculated. We use right so that it's the prior days. 
 
 
 ```{r}
@@ -43,25 +45,25 @@ for (row_number in 1:NROW(df)){
   }
 df
 ```
-<H2> Expanding the problem-Getting a list of available coins </H2>
-From there, let's have some fun and get a list of all the available coins in the dataset from Kaggle. The goal of this is being able to easily select a coin from the list, and proceed to run it 
+<H1> Expanding the problem-Getting a list of available coins </H1>
+
+From there, let's have some fun and get a list of all the available coins in the dataset from Kaggle. The goal of this is being able to easily select a coin from the list, and proceed to run it.
 
 ```{r}
 file_list <- list.files(path="coin_list")
 coin_list <- ""
 print(file_list)
 for (i in 1:length(file_list)){
-  print(str_extract_all(file_list[i], "(?<=coin_)(.*)(?=.csv)"))
   coin_list <- c(coin_list, str_extract_all(file_list[i], "(?<=coin_)(.*)(?=.csv)"))
 }
 Coin_df <- data.frame(coin_list = unlist(coin_list))
 ```
-
+<H2> Coin Selection </H2>
 From this list, feel free to pick any two coins
 
 ```{r}
 Coin1 <- "Bitcoin" 
-Coin2 <- "EOS"
+Coin2 <- "Ethereum"
 
 if (!any(Coin_df$coin_list==Coin1)){
   print("Please select a different coin from the list above for Coin 1")
@@ -75,8 +77,8 @@ if (any(Coin_df$coin_list==Coin1) && any(Coin_df$coin_list==Coin2))
 }
 
 ```
-
-Now we're going to take the code for a 6 day moving functions and year to date averages and make it into a function. 
+<H1> Function Creation </H1>
+Now we're going to take the code for a 6 day moving functions and year to date averages and make each into a function. I like seperating the functions so that can be easily reused in the future. 
 ```{r}
 Six_Day_RollingAvg <- function(file_name){
   six_day_ravg <- read_delim(file_name, delim=",", col_names=TRUE, show_col_types = FALSE)
@@ -97,15 +99,30 @@ Make_File_from_Coin <- function(coin_name){
   }
 ```
 
-Now let's test these created functions:
+Now let's test these created functions. First things first, let's test Make_File_from_Coin to ensure that we are generating the right relative path. Next, let's create the 4 dataframes for Coin1 and Coin2, merging them together by Name and Date as we wish to create 2 dataframes, one for each Coin1 and Coin2, with the coin name, date, YTD average and rolling average. 
+
+Finally, let's combine the two dataframes for each coin, merging on the date, so we can easily play with the data in the future. 
 
 ```{r}
 print(Make_File_from_Coin(Coin1))
 df_coin_1 <- merge(Six_Day_RollingAvg(Make_File_from_Coin(Coin1)), ytd_avg(Make_File_from_Coin(Coin1)), by=c("Name","Date"))
 df_coin_2 <- merge(Six_Day_RollingAvg(Make_File_from_Coin(Coin2)), ytd_avg(Make_File_from_Coin(Coin2)), by=c("Name","Date"))
 output <- (merge(df_coin_1, df_coin_2, by=c("Date")))
-head(output)
+knitr::kable(head(output), "simple")
 ```
+
+And we are going to test modularlly making charts here as well. 
+
+```{r, echo=FALSE}
+plot(x=output$Date, y=output$Six_Day_RollingAvg.x,
+pch=18,
+cex=1,
+xlab="Year", ylab="Rolling Average",
+main=paste0("Comparing the moving average of ", Coin1, " And ", Coin2 ),
+)
+lines(x=output$Date, y=output$Six_Day_RollingAvg.y)
+```
+
 <H1> The End </H1>
 Finally, we have the output of the dataset, a view of the 6-day average & YTD value of the two coins per day (in this case, BTC and EOS).
 
