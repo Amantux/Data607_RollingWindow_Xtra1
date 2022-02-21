@@ -1,41 +1,50 @@
 ---
-title: "R Notebook"
-output: html_notebook
+title: Extra Rolling Window Assignment
+author: Alex Moyse
+output:
+    html_document:
+    toc: true
+    toc_float: true
 ---
 
-This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+<H1> First Steps </H1>
 
 Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Ctrl+Shift+Enter*. 
 
 ```{r}
 library(dplyr)
 library(zoo)
+library(readr)
+library(tidyverse)
 ```
 
+<H2> Starting the Problem- A six-day rolling average on a fixed file </H2>
 First Things first let's work on a singular goal of getting a six-day rolling average. 
 
 
 ```{r}
 file <- "coin_Dogecoin.csv"
-df <- read_delim(file, delim=",", col_names=TRUE, show_col_types = FALSE)
+df <- read_delim("coin_Dogecoin.csv", delim=",", col_names=TRUE, show_col_types = FALSE)
 df$Six_Day_RollingAvg <- rollmean(df$Close, 6, fill = 0, na.pad = FALSE, 
   align = c("right"),)
 head(df,10)
 ```
 
+<H2> Completing the Problem- A year to date average on a fixed file </H2>
 After we have a six day rolling average, let's address the ytd mean. 
 
 ```{r}
 file <- "coin_Dogecoin.csv"
 df <- read_delim(file, delim=",", col_names=TRUE, show_col_types = FALSE)
 print(df$Close[1:10])
-for (row_number in 1:length(df)){
+for (row_number in 1:NROW(df)){
    df$RollingAvg[row_number] = mean(df$Close[1:row_number])
   }
-head(df)
+df
 ```
-
-From there, let's have some fun and get a list of all the available coins. 
+<H2> Expanding the problem-Getting a list of available coins </H2>
+From there, let's have some fun and get a list of all the available coins in the dataset from Kaggle. The goal of this is being able to easily select a coin from the list, and proceed to run it 
 
 ```{r}
 file_list <- list.files(path="coin_list")
@@ -45,7 +54,7 @@ for (i in 1:length(file_list)){
   print(str_extract_all(file_list[i], "(?<=coin_)(.*)(?=.csv)"))
   coin_list <- c(coin_list, str_extract_all(file_list[i], "(?<=coin_)(.*)(?=.csv)"))
 }
-df <- data.frame(test_column = unlist(coin_list))
+Coin_df <- data.frame(coin_list = unlist(coin_list))
 ```
 
 From this list, feel free to pick any two coins
@@ -53,6 +62,18 @@ From this list, feel free to pick any two coins
 ```{r}
 Coin1 <- "Bitcoin" 
 Coin2 <- "EOS"
+
+if (!any(Coin_df$coin_list==Coin1)){
+  print("Please select a different coin from the list above for Coin 1")
+}
+if (!any(Coin_df$coin_list==Coin2)){
+  print("Please select a different coin from the list above for Coin 2")
+}
+if (any(Coin_df$coin_list==Coin1) && any(Coin_df$coin_list==Coin2))
+{
+  print("Please continue to the next steps")
+}
+
 ```
 
 Now we're going to take the code for a 6 day moving functions and year to date averages and make it into a function. 
@@ -65,22 +86,28 @@ Six_Day_RollingAvg <- function(file_name){
 }
 ytd_avg <- function(file_name){
 ytd_avg_df <- read_delim(file_name, delim=",", col_names=TRUE, show_col_types = FALSE)
-for (row_number in 1:length(ytd_avg_df)){
+ytd_avg_df$RollingAvg <- "NA"
+for (row_number in 1:NROW(ytd_avg_df)){
     ytd_avg_df$RollingAvg[row_number] = mean(ytd_avg_df$Close[1:row_number])
 }
 return(ytd_avg_df[c("Name","Date","RollingAvg")])
 }
+Make_File_from_Coin <- function(coin_name){
+  return (paste0("coin_list/","coin_", coin_name ,".csv"))
+  }
 ```
 
 Now let's test these created functions:
 
 ```{r}
-df_coin_1 <- merge(Six_Day_RollingAvg("coin_Bitcoin.csv"), ytd_avg("coin_Bitcoin.csv"), by=c("Name","Date"))
-head(df_coin_1)
+print(Make_File_from_Coin(Coin1))
+df_coin_1 <- merge(Six_Day_RollingAvg(Make_File_from_Coin(Coin1)), ytd_avg(Make_File_from_Coin(Coin1)), by=c("Name","Date"))
+df_coin_2 <- merge(Six_Day_RollingAvg(Make_File_from_Coin(Coin2)), ytd_avg(Make_File_from_Coin(Coin2)), by=c("Name","Date"))
+output <- (merge(df_coin_1, df_coin_2, by=c("Date")))
+head(output)
 ```
+<H1> The End </H1>
+Finally, we have the output of the dataset, a view of the 6-day average & YTD value of the two coins per day (in this case, BTC and EOS).
 
-Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Ctrl+Alt+I*.
-
-When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Ctrl+Shift+K* to preview the HTML file).
-
-The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+<H1> References </H1>
+Kaggle's Historical Crypto Set-https://www.kaggle.com/sudalairajkumar/cryptocurrencypricehistory/download
